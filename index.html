@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>To-Do List with Time Range</title>
+  <style>
+    body {
+      background: linear-gradient(to right, #74ebd5, #acb6e5);
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .todo-container {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+      width: 400px;
+      animation: fadeIn 1s ease-in;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .input-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    input[type="text"], input[type="time"] {
+      padding: 10px;
+      border: 2px solid #74ebd5;
+      border-radius: 8px;
+      outline: none;
+      transition: 0.3s;
+    }
+
+    input:focus {
+      border-color: #56c8d8;
+    }
+
+    button {
+      padding: 10px 15px;
+      background-color: #74ebd5;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s ease, background-color 0.3s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      background-color: #56c8d8;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 10px;
+    }
+
+    li {
+      background: #f9f9f9;
+      padding: 10px 15px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      animation: slideIn 0.4s ease forwards;
+      position: relative;
+    }
+
+    li.completed {
+      text-decoration: line-through;
+      background: #d1ffd1;
+      color: #4caf50;
+      transition: 0.3s;
+    }
+
+    .task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .task-time, .task-date {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .delete-btn {
+      background: transparent;
+      border: none;
+      color: #e74c3c;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .fade-out {
+      animation: fadeOut 0.4s forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeOut {
+      to {
+        opacity: 0;
+        transform: translateX(100px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="todo-container">
+    <h1>To-Do List 📝</h1>
+    <div class="input-section">
+      <input type="text" id="taskInput" placeholder="Enter task..." />
+      <input type="time" id="fromTime" />
+      <input type="time" id="toTime" />
+      <button onclick="addTask()">Add Task</button>
+    </div>
+    <ul id="taskList"></ul>
+  </div>
+
+  <script>
+    const taskList = document.getElementById("taskList");
+
+    // Load saved tasks
+    window.onload = () => {
+      const savedTasks = JSON.parse(localStorage.getItem("tasks")) || [];
+      savedTasks.forEach(task => {
+        createTask(task.text, task.fromTime, task.toTime, task.date, task.completed);
+      });
+    };
+
+    function addTask() {
+      const input = document.getElementById("taskInput");
+      const from = document.getElementById("fromTime");
+      const to = document.getElementById("toTime");
+      const taskText = input.value.trim();
+      if (taskText === "" || from.value === "" || to.value === "") {
+        alert("Please enter task and both times.");
+        return;
+      }
+
+      const now = new Date();
+      const date = now.toLocaleDateString('en-IN');
+
+      createTask(taskText, from.value, to.value, date, false);
+      saveTasks();
+
+      input.value = "";
+      from.value = "";
+      to.value = "";
+    }
+
+    function createTask(text, fromTime, toTime, date, completed) {
+      const li = document.createElement("li");
+      if (completed) li.classList.add("completed");
+
+      li.innerHTML = `
+        <div class="task-header">
+          <span onclick="toggleComplete(this)">${text}</span>
+          <button class="delete-btn" onclick="deleteTask(this)">✖</button>
+        </div>
+        <div class="task-time">From ${formatTime(fromTime)} to ${formatTime(toTime)}</div>
+        <div class="task-date">Date: ${date}</div>
+      `;
+
+      taskList.appendChild(li);
+    }
+
+    function toggleComplete(span) {
+      const li = span.closest("li");
+      li.classList.toggle("completed");
+      saveTasks();
+    }
+
+    function deleteTask(btn) {
+      const li = btn.closest("li");
+      li.classList.add("fade-out");
+      li.addEventListener("animationend", () => {
+        li.remove();
+        saveTasks();
+      });
+    }
+
+    function formatTime(timeStr) {
+      const [hour, minute] = timeStr.split(":");
+      const h = parseInt(hour);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const hour12 = (h % 12) || 12;
+      return `${hour12}:${minute} ${ampm}`;
+    }
+
+    function saveTasks() {
+      const tasks = [];
+      taskList.querySelectorAll("li").forEach(li => {
+        const text = li.querySelector("span").innerText;
+        const timeText = li.querySelector(".task-time").innerText;
+        const dateText = li.querySelector(".task-date").innerText.replace("Date: ", "");
+        const completed = li.classList.contains("completed");
+
+        const fromMatch = timeText.match(/From (\d{1,2}:\d{2} [APM]{2})/);
+        const toMatch = timeText.match(/to (\d{1,2}:\d{2} [APM]{2})/);
+        const fromTime = convertTo24(fromMatch[1]);
+        const toTime = convertTo24(toMatch[1]);
+
+        tasks.push({ text, fromTime, toTime, date: dateText, completed });
+      });
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+    }
+
+    function convertTo24(time12) {
+      const [time, ampm] = time12.split(" ");
+      let [hour, minute] = time.split(":");
+      hour = parseInt(hour);
+      if (ampm === "PM" && hour < 12) hour += 12;
+      if (ampm === "AM" && hour === 12) hour = 0;
+      return `${hour.toString().padStart(2, '0')}:${minute}`;
+    }
+  </script>
+</body>
+</html>
